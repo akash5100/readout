@@ -12,7 +12,6 @@ PYTHON="/Users/akash/.virtualenvs/tts/bin/python"
 PID_FILE="/tmp/tts_macos_app.pid"
 
 SERVER_SCRIPT="$DIR/src/tts/server.py"
-APP_SCRIPT="$DIR/src/tts/app.py"
 NATIVE_BIN="$DIR/native/AuraTTS/.build/release/AuraTTS"
 
 start() {
@@ -25,24 +24,22 @@ start() {
         rm -f "$PID_FILE"
     fi
 
+    if [ ! -x "$NATIVE_BIN" ]; then
+        echo "[!] Native app not built. Run: cd native/AuraTTS && swift build -c release" >&2
+        return 1
+    fi
+
     if ! curl -s http://127.0.0.1:5050/ >/dev/null 2>&1; then
         echo "[*] Launching TTS Server daemon on 127.0.0.1:5050..."
         nohup "$PYTHON" "$SERVER_SCRIPT" --host 127.0.0.1 --port 5050 >> /tmp/tts_server.log 2>&1 &
         sleep 0.8
     fi
 
-    if [ -x "$NATIVE_BIN" ]; then
-        echo "[*] Launching native macOS AuraTTS App..."
-        nohup "$NATIVE_BIN" >> /tmp/tts_macos_app.log 2>&1 &
-        echo $! > "$PID_FILE"
-        sleep 0.8
-        echo "[✓] Native AuraTTS is active in top menu bar."
-    else
-        echo "[*] Launching legacy macOS TTS Menu Bar App (Python)..."
-        nohup "$PYTHON" "$APP_SCRIPT" >> /tmp/tts_macos_app.log 2>&1 &
-        sleep 0.8
-        echo "[✓] Menu Bar App is active in top status bar."
-    fi
+    echo "[*] Launching native macOS AuraTTS App..."
+    nohup "$NATIVE_BIN" >> /tmp/tts_macos_app.log 2>&1 &
+    echo $! > "$PID_FILE"
+    sleep 0.8
+    echo "[✓] Native AuraTTS is active in top menu bar."
 }
 
 stop() {
@@ -54,9 +51,7 @@ stop() {
     fi
     pkill -f "AuraTTS" 2>/dev/null
     pkill -f "$NATIVE_BIN" 2>/dev/null
-    pkill -f "$APP_SCRIPT" 2>/dev/null
     pkill -f "$SERVER_SCRIPT" 2>/dev/null
-    pkill -f "tts-companion" 2>/dev/null
     pkill -f "tts-server" 2>/dev/null
     echo "[✓] TTS Menu Bar App stopped."
 }

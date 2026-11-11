@@ -37,7 +37,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "supratts"))
-from microtts import MicroTTS  # noqa: E402
 
 
 CACHE_DIR = Path.home() / ".cache" / "tts-ext" / "models"
@@ -153,6 +152,10 @@ class ModelManager:
     self.unload()
 
     if "supratts" in canonical_id.lower() or "microtts" in canonical_id.lower():
+      try:
+        from microtts import MicroTTS
+      except ImportError as exc:
+        raise RuntimeError("SupraTTS requires the optional microtts package.") from exc
       local_supra = REPO_ROOT / "supratts"
       if (local_supra / "config.json").exists():
         self.model = MicroTTS.load(str(local_supra))
