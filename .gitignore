@@ -1,0 +1,27 @@
+# Dependencies & Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.pt
+*.safetensors
+*.bin
+
+# Model downloads & caches
+supratts/
+.cache/
+*.wav
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Benchmarks & test output
+benchmark/output/
+assets/*.wav
+
+# Local reference voices and transcripts
+voices/

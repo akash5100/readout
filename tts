@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+# Quick launcher and controller for macOS Text-to-Speech
+
+TTS_LAUNCHER="${BASH_SOURCE[0]}"
+while [ -L "$TTS_LAUNCHER" ]; do
+    TTS_LAUNCHER_DIR="$(cd "$(dirname "$TTS_LAUNCHER")" && pwd)"
+    TTS_LAUNCHER="$(readlink "$TTS_LAUNCHER")"
+    [[ "$TTS_LAUNCHER" = /* ]] || TTS_LAUNCHER="$TTS_LAUNCHER_DIR/$TTS_LAUNCHER"
+done
+DIR="$(cd "$(dirname "$TTS_LAUNCHER")" && pwd)"
+PYTHON="/Users/akash/.virtualenvs/tts/bin/python"
+PID_FILE="/tmp/tts_macos_app.pid"
+
+SERVER_SCRIPT="$DIR/src/tts/server.py"
+APP_SCRIPT="$DIR/src/tts/app.py"
+NATIVE_BIN="$DIR/native/AuraTTS/.build/release/AuraTTS"
+
+start() {
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "[*] TTS Menu Bar App is already running (PID: $PID)."
+            return 0
+        fi
+        rm -f "$PID_FILE"
+    fi
+
+    if ! curl -s http://127.0.0.1:5050/ >/dev/null 2>&1; then
+        echo "[*] Launching TTS Server daemon on 127.0.0.1:5050..."
+        nohup "$PYTHON" "$SERVER_SCRIPT" --host 127.0.0.1 --port 5050 >> /tmp/tts_server.log 2>&1 &
+        sleep 0.8
+    fi
+
+    if [ -x "$NATIVE_BIN" ]; then
+        echo "[*] Launching native macOS AuraTTS App..."
+        nohup "$NATIVE_BIN" >> /tmp/tts_macos_app.log 2>&1 &
+        echo $! > "$PID_FILE"
+        sleep 0.8
+        echo "[✓] Native AuraTTS is active in top menu bar."
+    else
+        echo "[*] Launching legacy macOS TTS Menu Bar App (Python)..."
+        nohup "$PYTHON" "$APP_SCRIPT" >> /tmp/tts_macos_app.log 2>&1 &
+        sleep 0.8
+        echo "[✓] Menu Bar App is active in top status bar."
+    fi
+}
+
+stop() {
+    echo "[*] Stopping TTS App..."
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        kill -9 "$PID" 2>/dev/null
+        rm -f "$PID_FILE"
+    fi
+    pkill -f "AuraTTS" 2>/dev/null
+    pkill -f "$NATIVE_BIN" 2>/dev/null
+    pkill -f "$APP_SCRIPT" 2>/dev/null
+    pkill -f "$SERVER_SCRIPT" 2>/dev/null
+    pkill -f "tts-companion" 2>/dev/null
+    pkill -f "tts-server" 2>/dev/null
+    echo "[✓] TTS Menu Bar App stopped."
+}
+
+server() {
+    echo "[*] Launching TTS Server directly on 127.0.0.1:5050..."
+    exec "$PYTHON" "$SERVER_SCRIPT" --host 127.0.0.1 --port 5050
+}
+
+status() {
+    APP_STATUS="Offline"
+    SERVER_STATUS="Offline"
+
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            PROC_NAME=$(ps -p "$PID" -o comm= 2>/dev/null | xargs basename 2>/dev/null || echo "AuraTTS")
+            APP_STATUS="Running ($PROC_NAME, PID: $PID)"
+        fi
+    fi
+
+    # Fallback check if AuraTTS running without pidfile
+    if [ "$APP_STATUS" = "Offline" ]; then
+        NATIVE_PID=$(pgrep -x "AuraTTS" 2>/dev/null | head -n 1 || true)
+        if [ -n "$NATIVE_PID" ]; then
+            APP_STATUS="Running (AuraTTS native, PID: $NATIVE_PID)"
+            echo "$NATIVE_PID" > "$PID_FILE"
+        fi
+    fi
+
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5050/ || true)
+    if [ "$HTTP_CODE" = "200" ]; then
+        SERVER_INFO=$(curl -s http://127.0.0.1:5050/ | grep -o '"model_type"[[:space:]]*:[[:space:]]*"[^"]*"' | tr -d ' "' || true)
+        SERVER_STATUS="Running ($SERVER_INFO)"
+    fi
+
+    AX_STATUS=$("$PYTHON" -c "import ApplicationServices; print('Granted' if ApplicationServices.AXIsProcessTrusted() else 'NOT Granted')" 2>/dev/null || echo "Unknown")
+
+    echo "=== macOS TTS Status ==="
+    echo "Menu Bar App : $APP_STATUS"
+    echo "TTS Server   : $SERVER_STATUS"
+    echo "Accessibility: $AX_STATUS"
+}
+
+restart() {
+    stop
+    sleep 0.5
+    start
+}
+
+logs() {
+    tail -f /tmp/tts_macos_app.log /tmp/tts_server.log
+}
+
+case "$1" in
+    speak)
+        shift
+        PYTHONPATH="$DIR/src${PYTHONPATH:+:$PYTHONPATH}" exec "$PYTHON" -m tts.cli "$@"
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    serve|server)
+        server
+        ;;
+    logs)
+        logs
+        ;;
+    start|"")
+        start
+        ;;
+    *)
+        echo "Usage: tts [start|stop|restart|status|serve|logs|speak TEXT]"
+        exit 1
+        ;;
+esac

@@ -1,0 +1,21 @@
+{
+  "typeCheckingMode": "basic",
+  "pythonVersion": "3.12",
+  "reportUnknownArgumentType": false,
+  "reportUnknownParameterType": false,
+  "reportMissingTypeStubs": false,
+  "reportUnusedImport": "warning",
+  "reportPrivateImportUsage": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownVariableType": false,
+  "include": [
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "**/build/**",
+    "**/dist/**",
+    "**/__pycache__/**",
+    "**/.venv/**"
+  ]
+}

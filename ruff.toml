@@ -1,0 +1,57 @@
+line-length = 150
+indent-width = 2
+target-version = "py312"
+exclude = [
+  ".git",
+  ".venv",
+  "venv",
+  "__pycache__",
+  "build",
+  "dist",
+  "supratts",
+  "voices",
+]
+
+src = [
+  "src",
+  ".",
+]
+
+[lint]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort (import sorting)
+  "D",   # pydocstyle (enforces docstrings on all functions/classes)
+  "UP",  # pyupgrade
+  "B",   # flake8-bugbear
+]
+ignore = [
+  "E501",  # line too long
+  "E701",  # multiple statements on one line
+  "D1",    # missing docstring in public module/class/method
+  "D200",  # allows multi-line docstring format
+  "D203",  # 1 blank line required before class docstring
+  "D212",  # multi-line docstring summary should start at first line
+]
+
+[lint.per-file-ignores]
+"tests/**" = ["D"]
+"**/tests/**" = ["D"]
+"test_*.py" = ["D"]
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.isort]
+combine-as-imports = true
+lines-after-imports = 2
+known-first-party = [
+  "tts",
+]
+
+[format]
+indent-style = "space"
+quote-style = "double"
+line-ending = "auto"

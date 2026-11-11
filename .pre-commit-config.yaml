@@ -1,0 +1,37 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+      - id: check-ast
+      - id: check-docstring-first
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        args:
+          - --maxkb
+          - "2000"
+        exclude: |
+          (?x)^(
+              uv\.lock|
+              .*/assets|
+              voices/.*|
+              supratts/.*
+          )$
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.6
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+ci:
+  autofix_commit_msg: "[pre-commit.ci] Auto format from pre-commit.com hooks"
+  autoupdate_commit_msg: "⬆ [pre-commit.ci] pre-commit autoupdate"
+  submodules: false
